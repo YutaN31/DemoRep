@@ -1,0 +1,75 @@
+apiVersion: kubevirt.io/v1alpha3
+kind: VirtualMachine
+metadata:
+  name: testvm
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        kubevirt.io/size: small
+        kubevirt.io/domain: testvm
+    spec:
+      domain:
+        devices:
+          disks:
+            - name: containerdisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+            - name: configmap-disk
+              disk: {}
+              serial: CVLY623300HK240D
+            - name: secret-disk
+              disk: {}
+              serial: DVLY623300HK240D               
+          interfaces:
+          - name: default
+            bridge: {}
+        resources:
+          requests:
+            memory: 4096M
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+        - name: containerdisk
+          containerDisk:
+            image: kubevirt/fedora-cloud-container-disk-demo
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              password: fedora
+              chpasswd: { expire: False }
+              bootcmd:
+                - "mkdir /mnt/configmap"
+                - "mount /dev/$(lsblk --nodeps -no name,serial | grep CVLY623300HK240D | cut -f1 -d' ') /mnt/configmap"
+                - "mkdir /mnt/secret"
+                - "mount /dev/$(lsblk --nodeps -no name,serial | grep DVLY623300HK240D | cut -f1 -d' ') /mnt/secret"
+        - configMap:
+            name: sample-configmap 
+          name: configmap-disk
+        - secret:
+            secretName: sample-secret
+          name: secret-disk
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm-service
+spec:
+  ports:
+  - port: 22
+    protocol: TCP
+    targetPort: 22
+    name: ssh
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+    name: http
+  selector:
+    kubevirt.io/domain: testvm
+  type: ClusterIP
