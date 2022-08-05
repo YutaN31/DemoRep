@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: f5demoapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: f5demoapp
+  template:
+    metadata:
+      labels:
+        app: f5demoapp
+    spec:
+      containers:
+        - name: f5demoapp
+          image: f5devcentral/f5-demo-app
+          ports:
+            - containerPort: 80
